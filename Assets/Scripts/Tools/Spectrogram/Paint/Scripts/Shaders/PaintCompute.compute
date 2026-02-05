@@ -1,0 +1,76 @@
+#pragma kernel DrawStroke
+#pragma kernel StrokeCompleted
+#pragma kernel FillBackground
+#pragma kernel Combine
+
+#include "./Math.hlsl"
+#include "./ColourMath.hlsl"
+
+RWTexture2D<float4> Canvas;
+RWTexture2D<float4> StrokeCanvas;
+RWTexture2D<float4> Result;
+uint2 size;
+
+float2 lineStart, lineEnd;
+float pressure, pressurePrevious;
+float brushRadius, brushSmoothT;
+float alphaMultiplier;
+uint2 boundsBottomLeft;
+float4 brushColour;
+float4 fillColour;
+
+
+
+[numthreads(8,8,1)]
+void DrawStroke (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= size.x || id.y >= size.y) { return; }
+
+	uint2 pixelPos = boundsBottomLeft + id.xy;
+	float2 strokeData = drawLineDstInfo(pixelPos, lineStart, lineEnd);
+	float dstFromLine = strokeData[0];
+	float timeAlongLine = strokeData[1];
+
+	float currentPressure = lerp(pressurePrevious, pressure, timeAlongLine);
+	float radius = max(1, brushRadius);
+	float pressureAlpha = max(0.01, smoothstep(0.1,0.9, currentPressure));
+	
+
+	float brushWeight = smoothstep(0, -radius * brushSmoothT, dstFromLine-radius) * brushColour.a * pressureAlpha * alphaMultiplier;
+	float brushWeightOld = StrokeCanvas[pixelPos].a;
+
+	StrokeCanvas[pixelPos] = float4(brushColour.rgb, max(brushWeight, brushWeightOld));
+}
+
+[numthreads(8,8,1)]
+void StrokeCompleted (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= size.x || id.y >= size.y) { return; }
+
+	float4 strokeData = StrokeCanvas[id.xy];
+	float4 colOld = Canvas[id.xy];
+	float3 colNew = blendColour(colOld.rgb, strokeData.rgb, strokeData.a);
+
+	Canvas[id.xy] = float4(colNew.rgb, max(colOld.a,strokeData.a));
+	StrokeCanvas[id.xy] = 0;
+}
+
+[numthreads(8,8,1)]
+void FillBackground (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= size.x || id.y >= size.y) { return; }
+	Canvas[id.xy] = fillColour;
+	StrokeCanvas[id.xy] = 0;
+}
+
+[numthreads(8,8,1)]
+void Combine (uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= size.x || id.y >= size.y) { return; }
+
+	float4 strokeData = StrokeCanvas[id.xy];
+	float4 colOld = Canvas[id.xy];
+	float3 colNew = blendColour(colOld.rgb, strokeData.rgb, strokeData.a);
+
+	Result[id.xy] = float4(colNew.rgb, max(colOld.a,strokeData.a));
+}
