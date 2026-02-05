@@ -1,4 +1,6 @@
-Some experiments with the Discrete Fourier Transform. Please note: the current implementation is extreeeemely slow!
+Some audio experiments.
 
-You can watch a video about this project here:
-[Coding Adventure: Sound (and the Fourier Transform](https://youtu.be/iA6wRgwl7k0?si=jMHFKpBnsqDpcupW)
+You can watch videos about this project here:<br>
+[Coding Adventure: Sound (and the Fourier Transform](https://youtu.be/iA6wRgwl7k0?si=jMHFKpBnsqDpcupW)<br>[Coding Adventure: Analyzing Audio](https://youtu.be/08mmKNLQVHU)
+
+Created in Unity version 6000.2
